@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+  ABANDONED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  firstName     String         @map("first_name")
+  lastName      String         @map("last_name")
+  passwordHash  String         @map("password_hash")
+  emailVerified Boolean        @default(false) @map("email_verified")
+  status        UserStatus     @default(ACTIVE)
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revoked   Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("refresh_tokens")
+}
+
+model SignupAttempt {
+  id             String        @id @default(uuid())
+  email          String
+  firstName      String?       @map("first_name")
+  lastName       String?       @map("last_name")
+  passwordHash   String?       @map("password_hash")
+  emailVerified  Boolean       @default(false) @map("email_verified")
+  phoneVerified  Boolean       @default(false) @map("phone_verified")
+  mfaEnabled     Boolean       @default(false) @map("mfa_enabled")
+  currentStep    String        @default("signup")
+  completedSteps String[]      @default([])
+  status         AttemptStatus @default(IN_PROGRESS)
+  attemptCount   Int           @default(1) @map("attempt_count")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  expiresAt      DateTime      @map("expires_at")
+  completedAt    DateTime?     @map("completed_at")
+
+  @@unique([email, status])
+  @@map("signup_attempts")
+}
